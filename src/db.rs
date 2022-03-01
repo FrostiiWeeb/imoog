@@ -8,11 +8,10 @@ use sqlx::postgres::PgPoolOptions;
 
 #[async_trait]
 trait DatabaseImpl<OptionsT> {
-    async fn connect(&self);
+    async fn connect(options: OptionsT) -> Self;
     async fn fetch(&self, identifier: String) -> (String, Vec<u8>, String);
     async fn insert(&self, identifier: String, mime_type: String, image: Vec<u8>);
-    async fn delete();
-    fn new(options: OptionsT) -> Self;
+    async fn delete(&self, identifier: String);
 }
 
 struct DatabaseDriver<OptionsT, ConnectionT> {
@@ -24,24 +23,32 @@ struct DatabaseDriver<OptionsT, ConnectionT> {
 
 #[async_trait]
 impl DatabaseImpl<PostgresOptions> for DatabaseDriver<PostgresOptions, sqlx::Pool<sqlx::Postgres>> {
-    async fn connect(&self) {
-        let conn = PgPoolOptions::new()
-            .max_connections(self.options.max_connections)
-            .connect(self.options.connection_uri.as_str())
-            .await
-            .unwrap();
+    async fn connect(options: PostgresOptions) -> Self {
+        let connection_uri = &options.connection_uri;
+        let max_connections = &options.max_connections;
 
-        self.connection = conn;
+        let conn = PgPoolOptions::new()
+            .max_connections(max_connections.to_owned())
+            .connect(&connection_uri)
+            .await
+            .expect("Failed to connect to PostgreSQL database");
+        
+        let db = Self {
+            options,
+            connection: conn
+        };
 
         // execute the basic table initialization for imoog
-        sqlx::query("CREATE TABLE IF NOT EXISTS imoog(
+        sqlx::query("CREATE TABLE IF NOT EXISTS imoog (
             image_identifier TEXT PRIMARY KEY,
             image_data BLOB,
             mime TEXT
         )")
-            .execute(&conn)
+            .execute(&db.connection)
             .await
-            .expect("Failed to run the initialization query for imoog (postgres)");
+            .expect("Failed to create imoog PostgreSQL table");
+
+        db
     }
 
     async fn fetch(&self, identifier: String) -> (String, Vec<u8>, String) {
@@ -62,11 +69,19 @@ impl DatabaseImpl<PostgresOptions> for DatabaseDriver<PostgresOptions, sqlx::Poo
 
     async fn insert(&self, identifier: String, mime_type: String, image: Vec<u8>) {
         sqlx::query("INSERT INTO imoog VALUES($1, $2, $3)")
-            .bind(identifier)
+            .bind(&identifier)
             .bind(image)
             .bind(mime_type)
             .execute(&self.connection)
             .await
             .expect(&format!("Failed to insert image ({})", identifier));
+    }
+
+    async fn delete(&self, identifier: String) {
+        sqlx::query("DELETE FROM imoog WHERE image_identifier = $1")
+            .bind(&identifier)
+            .execute(&self.connection)
+            .await
+            .expect(&format!("Failed to delete image ({})", identifier));
     }
 }
