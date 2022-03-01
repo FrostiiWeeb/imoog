@@ -1,0 +1,25 @@
+[package]
+name = "rimoog"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.4.6"
+async-trait = "0.1.52"
+toml = "0.5.8"
+
+[dependencies.sqlx]
+version = "0.*"
+optional = false
+features = ["postgres", "runtime-tokio-native-tls"]
+
+[dependencies.serde]
+version = "1.0.*"
+optional = false
+features = ["derive"]
+
+[dependencies.tokio]
+version = "1.*"
+features = ["full"]
