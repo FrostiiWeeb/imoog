@@ -1,9 +1,0 @@
-[database]
-driver = "mongodb"
-connection_uri = "mongodb+srv://cdnroot:Universe@cdncluster.evggi.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
-database_name = "images"
-collection_name = "encoded"
-
-[auth]
-secret_key = "among us"
-delete_requires_auth = true
