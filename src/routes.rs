@@ -1,15 +1,12 @@
 use axum::body::Body;
 use axum::extract::Path;
-use axum::http::{
-    Response,
-    StatusCode,
-};
+use axum::http::{Response, StatusCode};
 
 use std::sync::Arc;
 
 use crate::{
     db::{DatabaseDriver, DatabaseImpl, MongoImoogDocument},
-    options::MongoOptions
+    options::MongoOptions,
 };
 use mongodb::Collection;
 
@@ -17,9 +14,11 @@ pub async fn index() -> &'static str {
     "Welcome to imoog"
 }
 
-pub async fn deliver_file(database: Arc<DatabaseDriver<MongoOptions, Collection<MongoImoogDocument>>>, Path(identifier): Path<String>) -> Response<Body> {
-    let result = database.fetch(identifier)
-        .await;
+pub async fn deliver_file(
+    database: Arc<DatabaseDriver<MongoOptions, Collection<MongoImoogDocument>>>,
+    Path(identifier): Path<String>,
+) -> Response<Body> {
+    let result = database.fetch(identifier).await;
 
     let resp;
 

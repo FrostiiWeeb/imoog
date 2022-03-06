@@ -1,13 +1,12 @@
 use crate::options::{MongoOptions, PostgresOptions};
 use async_trait::async_trait;
 use mongodb::{
-    bson::doc, 
+    bson::doc,
     options::{ClientOptions, ResolverConfig},
-    Collection,
-    Client
+    Client, Collection,
 };
-use sqlx::postgres::PgPoolOptions;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgPoolOptions;
 
 #[async_trait]
 pub trait DatabaseImpl<OptionsT> {
@@ -28,7 +27,7 @@ pub struct MongoImoogDocument {
     _id: String,
     mime: String,
     #[serde(with = "serde_bytes")]
-    image: Vec<u8>
+    image: Vec<u8>,
 }
 
 #[async_trait]
@@ -36,10 +35,10 @@ impl DatabaseImpl<MongoOptions> for DatabaseDriver<MongoOptions, Collection<Mong
     async fn connect(options: MongoOptions) -> Self {
         let client_options = ClientOptions::parse_with_resolver_config(
             &options.connection_uri,
-            ResolverConfig::cloudflare()
+            ResolverConfig::cloudflare(),
         )
-            .await
-            .expect("Failed to parse connection uri");
+        .await
+        .expect("Failed to parse connection uri");
         let client =
             Client::with_options(client_options).expect("Failed to construct client (MongoDB)");
 
@@ -54,7 +53,9 @@ impl DatabaseImpl<MongoOptions> for DatabaseDriver<MongoOptions, Collection<Mong
 
     async fn fetch(&self, identifier: String) -> Option<(String, Vec<u8>, String)> {
         let filter = doc! {"_id": identifier};
-        let document = self.connection.find_one(filter, None)
+        let document = self
+            .connection
+            .find_one(filter, None)
             .await
             .expect("Query failed");
 
@@ -65,17 +66,19 @@ impl DatabaseImpl<MongoOptions> for DatabaseDriver<MongoOptions, Collection<Mong
         let image = MongoImoogDocument {
             _id: identifier,
             mime: mime_type,
-            image
+            image,
         };
 
-        self.connection.insert_one(image, None)
+        self.connection
+            .insert_one(image, None)
             .await
             .expect("Failed to insert image (MongoDB)");
     }
 
     async fn delete(&self, identifier: String) {
         let filter = doc! { "_id": identifier };
-        self.connection.delete_one(filter, None)
+        self.connection
+            .delete_one(filter, None)
             .await
             .expect("Failed to delete image (MongoDB)");
     }

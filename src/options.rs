@@ -16,11 +16,11 @@ pub struct MongoOptions {
 #[derive(Deserialize, Debug)]
 pub struct AuthOptions {
     secret_key: String,
-    delete_requires_auth: bool
+    delete_requires_auth: bool,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct ImoogOptions {
     pub database: MongoOptions,
-    pub auth: AuthOptions
+    pub auth: AuthOptions,
 }

@@ -1,6 +1,6 @@
 [database]
 driver = "mongodb"
-connection_uri = "mongodb+srv://cdnroot:Universemandarin5%23@cdncluster.evggi.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+connection_uri = "mongodb+srv://cdnroot:Universe@cdncluster.evggi.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 database_name = "images"
 collection_name = "encoded"
 
