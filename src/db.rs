@@ -2,7 +2,7 @@ use crate::options::{MongoOptions, PostgresOptions};
 use async_trait::async_trait;
 use mongodb::{
     bson::doc, 
-    options::ClientOptions,
+    options::{ClientOptions, ResolverConfig},
     Collection,
     Client
 };
@@ -10,36 +10,41 @@ use sqlx::postgres::PgPoolOptions;
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
-trait DatabaseImpl<OptionsT> {
+pub trait DatabaseImpl<OptionsT> {
     async fn connect(options: OptionsT) -> Self;
     async fn fetch(&self, identifier: String) -> Option<(String, Vec<u8>, String)>;
     async fn insert(&self, identifier: String, mime_type: String, image: Vec<u8>);
     async fn delete(&self, identifier: String);
 }
 
-struct DatabaseDriver<OptionsT, ConnectionT> {
+#[derive(Debug)]
+pub struct DatabaseDriver<OptionsT, ConnectionT> {
     options: OptionsT,
     connection: ConnectionT,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct MongoImoogCollection {
+pub struct MongoImoogDocument {
     _id: String,
-    image_data: Vec<u8>,
-    mime: String
+    mime: String,
+    #[serde(with = "serde_bytes")]
+    image: Vec<u8>
 }
 
 #[async_trait]
-impl DatabaseImpl<MongoOptions> for DatabaseDriver<MongoOptions, Collection<MongoImoogCollection>> {
+impl DatabaseImpl<MongoOptions> for DatabaseDriver<MongoOptions, Collection<MongoImoogDocument>> {
     async fn connect(options: MongoOptions) -> Self {
-        let client_options = ClientOptions::parse(&options.connection_uri)
+        let client_options = ClientOptions::parse_with_resolver_config(
+            &options.connection_uri,
+            ResolverConfig::cloudflare()
+        )
             .await
             .expect("Failed to parse connection uri");
         let client =
             Client::with_options(client_options).expect("Failed to construct client (MongoDB)");
 
         let db = client.database(&options.database_name);
-        let collection = db.collection::<MongoImoogCollection>(&options.collection_name);
+        let collection = db.collection::<MongoImoogDocument>(&options.collection_name);
 
         Self {
             options,
@@ -53,14 +58,14 @@ impl DatabaseImpl<MongoOptions> for DatabaseDriver<MongoOptions, Collection<Mong
             .await
             .expect("Query failed");
 
-        document.map(|d| (d._id, d.image_data, d.mime))
+        document.map(|d| (d._id, d.image, d.mime))
     }
 
     async fn insert(&self, identifier: String, mime_type: String, image: Vec<u8>) {
-        let image = MongoImoogCollection {
+        let image = MongoImoogDocument {
             _id: identifier,
             mime: mime_type,
-            image_data: image
+            image
         };
 
         self.connection.insert_one(image, None)
